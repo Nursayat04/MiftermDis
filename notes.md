@@ -18,7 +18,7 @@
 - replica RECV Increment(y) L=3 → replica APPLY y→1 L=6: порядок внутри процесса (сервер применяет инкремент к счётчику "y").
 - replica APPLY y→1 L=6 → replica SEND GetReply(value=1, found=True) L=11: порядок внутри процесса (сервер обрабатывает запрос на чтение от client-3 и возвращает ему уже изменённое значение).
 - replica SEND GetReply(value=1, found=True) L=11 → client-3 RECV GetReply L=12: сообщение (client-3 получает значение 1, которое появилось именно из-за инкремента от client-2).
-
+    
 ### 3. Конкурентная пара (отсутствие связи)
 
 События: client-3 SEND Get(y) L=7 и client-1 SEND Increment(x) L=11.
