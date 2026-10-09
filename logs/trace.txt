@@ -1,0 +1,39 @@
+[client-1] SEND Increment(counter=x, delta=1) L=1
+[client-2] SEND Increment(counter=y, delta=1) L=1
+[client-3] SEND Get(counter=x) L=1
+[client-3] RECV GetReply(value=0, found=False) L=6 (received L=5)
+[client-3] SEND Get(counter=y) L=7
+[client-2] RECV IncrementReply(new_value=1) L=8 (received L=7)
+[client-1] RECV IncrementReply(new_value=1) L=10 (received L=9)
+[client-2] SEND Increment(counter=y, delta=1) L=9
+[client-1] SEND Increment(counter=x, delta=1) L=11
+[client-3] RECV GetReply(value=1, found=True) L=12 (received L=11)
+[client-3] SEND Get(counter=x) L=13
+[client-2] RECV IncrementReply(new_value=2) L=17 (received L=16)
+[client-1] RECV IncrementReply(new_value=2) L=19 (received L=18)
+[client-3] RECV GetReply(value=2, found=True) L=20 (received L=19)
+[client-3] SEND Get(counter=y) L=21
+[client-3] RECV GetReply(value=2, found=True) L=24 (received L=23)
+
+
+[replica-A] Listening on 127.0.0.1:50051
+[replica-A] RECV Get(counter=x) L=2 (received L=1)
+[replica-A] SEND GetReply(value=0, found=False) L=5
+[replica-A] RECV Increment(counter=y, delta=1) L=3 (received L=1)
+[replica-A] RECV Increment(counter=x, delta=1) L=4 (received L=1)
+[replica-A] APPLY counter=y -> 1 L=6
+[replica-A] SEND IncrementReply(new_value=1) L=7
+[replica-A] APPLY counter=x -> 1 L=8
+[replica-A] SEND IncrementReply(new_value=1) L=9
+[replica-A] RECV Get(counter=y) L=10 (received L=7)
+[replica-A] SEND GetReply(value=1, found=True) L=11
+[replica-A] RECV Increment(counter=y, delta=1) L=12 (received L=9)
+[replica-A] RECV Increment(counter=x, delta=1) L=13 (received L=11)
+[replica-A] APPLY counter=y -> 2 L=14
+[replica-A] SEND IncrementReply(new_value=2) L=16
+[replica-A] RECV Get(counter=x) L=15 (received L=13)
+[replica-A] APPLY counter=x -> 2 L=17
+[replica-A] SEND IncrementReply(new_value=2) L=18
+[replica-A] SEND GetReply(value=2, found=True) L=19
+[replica-A] RECV Get(counter=y) L=22 (received L=21)
+[replica-A] SEND GetReply(value=2, found=True) L=23
