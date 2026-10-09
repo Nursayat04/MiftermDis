@@ -30,7 +30,6 @@ def test_duplicate_key_not_reapplied(stub):
     assert reply1.new_value == 5
     assert reply1.was_duplicate is False
 
-    # Второй вызов с тем же ключом идемпотентности
     reply2 = incr(stub, "x", 5, "k-1")
     assert reply2.new_value == 5
     assert reply2.was_duplicate is True
@@ -77,41 +76,32 @@ def replicas():
 def test_majority_commit_two_acks(replicas):
     servers, stubs = replicas
     
-    # arrange: останавливаем третью реплику
     servers[2].stop(0).wait()
     
-    # act: делаем инкремент, рассылая запрос по всем стабам
     replies = quorum_incr(stubs, "x", 1, "k-1")
     
-    # assert: проверяем, что ответило ровно 2 реплики
     assert len(replies) == 2
     
-    # проверяем, что обе ответившие реплики вернули правильное значение
     for reply in replies:
         assert reply.new_value == 1
 
 def test_no_commit_below_majority(replicas):
     servers, stubs = replicas
     
-    # arrange: останавливаем две реплики из трех
     servers[1].stop(0).wait()
     servers[2].stop(0).wait()
     
-    # act: пытаемся сделать инкремент, рассылая запрос по всем стабам
     replies = quorum_incr(stubs, "x", 1, "k-1")
     
-    # assert: проверяем, что подтвердило меньше двух реплик (кворум не собран)
     assert len(replies) < 2
     assert get(stubs[0], "x").value == 1
 
 def test_replicas_converge(replicas):
     servers, stubs = replicas
     
-    # act: делаем 10 записей через кворум с уникальными ключами
     for i in range(10):
         quorum_incr(stubs, "x", 1, f"k-{i}")
         
-    # assert: проверяем, что все реплики в итоге имеют одинаковое значение 10
     for stub in stubs:
         reply = get(stub, "x")
         assert reply.value == 10
@@ -126,13 +116,10 @@ def test_retry_after_timeout_is_safe():
     channel = grpc.insecure_channel(f"127.0.0.1:{port}")
     stub = counter_pb2_grpc.CounterStub(channel)
 
-    # act: делаем запрос, первая попытка упадет по таймауту, вторая вернет duplicate
     reply = incr(stub, "x", 1, "k-1")
     
-    # ждем, чтобы первый (зависший) запрос гарантированно завершился на сервере
     time.sleep(0.5)
 
-    # assert: проверяем, что дублирование запроса не привело к двойному инкременту
     assert reply.new_value == 1
     assert get(stub, "x").value == 1
 

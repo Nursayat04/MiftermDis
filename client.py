@@ -65,7 +65,6 @@ def quorum_incr(stubs, counter_id, delta, key, clock=None):
 
 def main():
     parser = argparse.ArgumentParser()
-    # Добавлен флаг --name
     parser.add_argument("--name", default="client-1")
     parser.add_argument("--quorum", action="store_true")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -79,15 +78,14 @@ def main():
     p_get.add_argument("counter_id")
 
     args = parser.parse_args()
-
-    # Создаем часы
+   
     clock = LamportClock(args.name)
 
     channel = grpc.insecure_channel(SERVER)
     stub = counter_pb2_grpc.CounterStub(channel)
 
     if args.cmd == "incr":
-        key = args.key or str(uuid.uuid4())   # ключ один раз, до первой попытки
+        key = args.key or str(uuid.uuid4())   ы
 
         if args.quorum:
             stubs = [counter_pb2_grpc.CounterStub(grpc.insecure_channel(a)) for a in REPLICAS]

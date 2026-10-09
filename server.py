@@ -67,7 +67,6 @@ class CounterServicer(counter_pb2_grpc.CounterServicer):
             if request.counter_id in self._values:
                 value = self._values[request.counter_id]
                 l_send = self.clock.tick()
-                # ТЕПЕРЬ безопасно используем переменную value в принте и ответе
                 print(f"[{self.name}] SEND GetReply(value={value}, found=True) L={l_send}")
                 return counter_pb2.GetReply(
                     value=self._values[request.counter_id], 
@@ -94,12 +93,10 @@ def main():
     args = parser.parse_args()
 
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=8))
-    # Передаем args.name сюда:
     counter_pb2_grpc.add_CounterServicer_to_server(CounterServicer(args.name, args.delay_ms), server)
     server.add_insecure_port(f"127.0.0.1:{args.port}")
     server.start()
     
-    # Заодно добавил вывод имени сервера в логи, чтобы было видно, кто запустился
     print(f"[{args.name}] Listening on 127.0.0.1:{args.port}")
     server.wait_for_termination()
 
