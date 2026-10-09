@@ -6,7 +6,7 @@ import threading
 
 import grpc
 import pytest
-
+import time
 import counter_pb2_grpc
 from client import quorum_incr, incr, get
 
@@ -21,10 +21,11 @@ def free_port():
     return port
 
 
-def start_replica(name):
+def start_replica(name, delay_ms=0):
     port = free_port()
     proc = subprocess.Popen(
-        [sys.executable, "server.py", "--port", str(port), "--name", name],
+        [sys.executable, "server.py", "--port", str(port), "--name", name,
+         "--delay-ms", str(delay_ms)],
         cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     )
     channel = grpc.insecure_channel(f"127.0.0.1:{port}")
@@ -66,3 +67,16 @@ def test_request_duplication(cluster):
     assert second.was_duplicate is True
     assert second.new_value == 5
     assert get(stub, "x").value == 5
+
+def test_induced_timeout_with_retry():
+    proc, stub, channel = start_replica("replica-A", delay_ms=2500)
+    try:
+        reply = incr(stub, "x", 1, "k-1")
+        time.sleep(0.5)
+
+        assert reply.new_value == 1
+        assert get(stub, "x").value == 1
+    finally:
+        channel.close()
+        proc.kill()
+        proc.wait()
