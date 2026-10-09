@@ -6,19 +6,27 @@ from clocks import LamportClock
 import grpc
 import counter_pb2
 import counter_pb2_grpc
+import time
 
 
 class CounterServicer(counter_pb2_grpc.CounterServicer):
-    def __init__(self, name="replica-A"):
+    def __init__(self, name="replica-A", delay_ms=0):
         self.name = name
         self.clock = LamportClock(name)
+        self.delay_ms = delay_ms
+        self._delayed = False
         self._values = {}
         self._seen = {}
         self._lock = threading.Lock()
 
     def Increment(self, request, context):
         l = self.clock.receive(request.lamport_time)
-        print(f"[{self.name}] RECV Increment(counter={request.counter_id}, delta={request.delta}) L={l} (received L={request.lamport_time})")   
+        print(f"[{self.name}] RECV Increment(counter={request.counter_id}, delta={request.delta}) L={l} (received L={request.lamport_time})")
+
+        if self.delay_ms and not self._delayed:
+            self._delayed = True
+            time.sleep(self.delay_ms / 1000)
+
         with self._lock:
             if request.idempotency_key in self._seen:
                 counter_id, value = self._seen[request.idempotency_key]
@@ -79,11 +87,15 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=50051)
     parser.add_argument("--name", default="replica-A")
+    parser.add_argument("--delay-ms", type=int, default=0)
+    
+
+
     args = parser.parse_args()
 
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=8))
     # Передаем args.name сюда:
-    counter_pb2_grpc.add_CounterServicer_to_server(CounterServicer(args.name), server)
+    counter_pb2_grpc.add_CounterServicer_to_server(CounterServicer(args.name, args.delay_ms), server)
     server.add_insecure_port(f"127.0.0.1:{args.port}")
     server.start()
     

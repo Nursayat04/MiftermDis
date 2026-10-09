@@ -1,0 +1,7 @@
+[client-1] SEND Increment(counter=likes:post-42, delta=1) L=1
+[client-1] SEND Increment(counter=likes:post-42, delta=1) L=2
+[client-1] RECV IncrementReply(new_value=1) L=8 (received L=7)
+OK committed value=1 (duplicate: no)
+[client-1] SEND Get(counter=likes:post-42) L=1
+[client-1] RECV GetReply(value=1, found=True) L=11 (received L=10)
+value=1

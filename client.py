@@ -10,7 +10,7 @@ from clocks import LamportClock
 SERVER = "127.0.0.1:50051"
 TIMEOUT = 2.0
 BACKOFFS = [0.2, 0.4, 0.8]
-
+REPLICAS = ["127.0.0.1:50051", "127.0.0.1:50052", "127.0.0.1:50053"]
 
 def incr(stub, counter_id, delta, key, clock=None):
     request = counter_pb2.IncrementRequest(
@@ -53,12 +53,21 @@ def get(stub, counter_id, clock=None):
         
     return reply
 
+def quorum_incr(stubs, counter_id, delta, key, clock=None):
+    replies = []
+    for stub in stubs:
+        try:
+            reply = incr(stub, counter_id, delta, key, clock)
+            replies.append(reply)
+        except grpc.RpcError:
+            pass
+    return replies
 
 def main():
     parser = argparse.ArgumentParser()
     # Добавлен флаг --name
     parser.add_argument("--name", default="client-1")
-    
+    parser.add_argument("--quorum", action="store_true")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     p_incr = sub.add_parser("incr")
@@ -79,12 +88,22 @@ def main():
 
     if args.cmd == "incr":
         key = args.key or str(uuid.uuid4())   # ключ один раз, до первой попытки
-        # Передаем clock в incr
+
+        if args.quorum:
+            stubs = [counter_pb2_grpc.CounterStub(grpc.insecure_channel(a)) for a in REPLICAS]
+            replies = quorum_incr(stubs, args.counter_id, args.by, key, clock=clock)
+            acks = len(replies)
+            if acks >= 2:
+                dup = "yes" if replies[0].was_duplicate else "no"
+                print(f"OK committed value={replies[0].new_value} (replicas acked: {acks}/3, duplicate: {dup})")
+            else:
+                print(f"FAILED: only {acks}/3 replicas acknowledged")
+            return
+
         reply = incr(stub, args.counter_id, args.by, key, clock=clock)
         dup = "yes" if reply.was_duplicate else "no"
         print(f"OK committed value={reply.new_value} (duplicate: {dup})")
     else:
-        # Передаем clock в get
         reply = get(stub, args.counter_id, clock=clock)
         if reply.found:
             print(f"value={reply.value}")
