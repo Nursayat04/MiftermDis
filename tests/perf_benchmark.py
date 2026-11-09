@@ -16,7 +16,7 @@ REQUESTS = 2000
 
 
 def run(label, call, clients):
-    per_client = REQUESTS // clients
+    per_client = REQUESTS 
     latencies = []
     lock = threading.Lock()
 
@@ -27,7 +27,6 @@ def run(label, call, clients):
             start = time.perf_counter()
             call(key)
 
-            # TODO 1
             mine.append((time.perf_counter() - start) * 1000)
 
         with lock:
@@ -35,7 +34,6 @@ def run(label, call, clients):
 
     threads = [threading.Thread(target=worker) for _ in range(clients)]
 
-    # TODO 2
     for thread in threads:
         thread.start()
 
@@ -44,12 +42,11 @@ def run(label, call, clients):
 
     n = len(latencies)
 
-    # TODO 3
-    median = statistics.median(latencies)
+    mean = statistics.mean(latencies)
     sorted_latencies = sorted(latencies)
     p95 = sorted_latencies[math.ceil(0.95 * n) - 1]
 
-    print(f"| {label} | {median:.2f} | {p95:.2f} | {n} |")
+    print(f"| {label} | {mean:.2f} | {p95:.2f} | {n} |")
 
 
 def main():
@@ -57,7 +54,7 @@ def main():
     stubs = [item[1] for item in items]
 
     try:
-        print("| Configuration | Median latency (ms) | p95 latency (ms) | Requests |")
+        print("| Configuration | Mean latency (ms) | p95 latency (ms) | Requests |")
         print("|---|---|---|---|")
 
         one = lambda key: incr(stubs[0], "x", 1, key)

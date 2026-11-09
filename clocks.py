@@ -7,12 +7,11 @@ class LamportClock:
         self.time = 0
         self._lock = threading.Lock()
 
-    def tick(self):
-        with self._lock:
-            self.time = self.time + 1
-            return self.time
+   def tick(self):
+    self
 
     def receive(self, received):
         with self._lock:
             self.time = max(self.time, received) + 1
             return self.time
+        

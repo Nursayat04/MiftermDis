@@ -7,7 +7,7 @@ from concurrent import futures
 import counter_pb2_grpc
 from server import CounterServicer
 from client import incr, get
-from client import incr, get, quorum_incr
+from client import incr, get, quorum_incr, is_committed
 
 @pytest.fixture
 def stub():
@@ -75,13 +75,10 @@ def replicas():
 
 def test_majority_commit_two_acks(replicas):
     servers, stubs = replicas
-    
     servers[2].stop(0).wait()
-    
     replies = quorum_incr(stubs, "x", 1, "k-1")
-    
     assert len(replies) == 2
-    
+    assert is_committed(replies)
     for reply in replies:
         assert reply.new_value == 1
 
@@ -93,8 +90,8 @@ def test_no_commit_below_majority(replicas):
     
     replies = quorum_incr(stubs, "x", 1, "k-1")
     
-    assert len(replies) < 2
-    assert get(stubs[0], "x").value == 1
+    assert len(replies) == 1
+    assert not is_committed(replies)
 
 def test_replicas_converge(replicas):
     servers, stubs = replicas

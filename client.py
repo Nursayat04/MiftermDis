@@ -55,13 +55,10 @@ def get(stub, counter_id, clock=None):
 
 def quorum_incr(stubs, counter_id, delta, key, clock=None):
     replies = []
-    for stub in stubs:
-        try:
-            reply = incr(stub, counter_id, delta, key, clock)
-            replies.append(reply)
-        except grpc.RpcError:
-            pass
-    return replies
+    with 
+
+def is_committed(replies, total=len(REPLICAS)):
+    return len(replies) >= total // 2 + 1
 
 def main():
     parser = argparse.ArgumentParser()
@@ -85,13 +82,13 @@ def main():
     stub = counter_pb2_grpc.CounterStub(channel)
 
     if args.cmd == "incr":
-        key = args.key or str(uuid.uuid4())   ы
+        key = args.key or str(uuid.uuid4())   
 
         if args.quorum:
             stubs = [counter_pb2_grpc.CounterStub(grpc.insecure_channel(a)) for a in REPLICAS]
             replies = quorum_incr(stubs, args.counter_id, args.by, key, clock=clock)
             acks = len(replies)
-            if acks >= 2:
+            if is_committed(replies):
                 dup = "yes" if replies[0].was_duplicate else "no"
                 print(f"OK committed value={replies[0].new_value} (replicas acked: {acks}/3, duplicate: {dup})")
             else:
