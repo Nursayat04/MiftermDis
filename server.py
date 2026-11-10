@@ -6,6 +6,8 @@ from clocks import LamportClock
 import grpc
 import counter_pb2
 import counter_pb2_grpc
+import kvstore_pb2_grpc
+from kvstore_service import KVServicer, DEFAULT_CLUSTER
 import time
 
 
@@ -87,18 +89,33 @@ def main():
     parser.add_argument("--port", type=int, default=50051)
     parser.add_argument("--name", default="replica-A")
     parser.add_argument("--delay-ms", type=int, default=0)
-    
-
+    # Lab 6-7 (key-value store): the first address of --cluster is the Leaseholder.
+    parser.add_argument("--cluster", default=None,
+                        help="comma-separated replica addresses; enables the KeyValueStore service")
+    parser.add_argument("--heartbeat-ms", type=int, default=100)
+    parser.add_argument("--quiet", action="store_true", help="no per-request log of the key-value service")
 
     args = parser.parse_args()
+    addr = f"127.0.0.1:{args.port}"
 
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=8))
+    cluster = args.cluster.split(",") if args.cluster else None
+    if cluster is None and addr in DEFAULT_CLUSTER:
+        cluster = DEFAULT_CLUSTER
+
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=16 if cluster else 8))
     counter_pb2_grpc.add_CounterServicer_to_server(CounterServicer(args.name, args.delay_ms), server)
-    server.add_insecure_port(f"127.0.0.1:{args.port}")
+    if cluster:
+        kv = KVServicer(addr, cluster, heartbeat_ms=args.heartbeat_ms, verbose=not args.quiet)
+        kvstore_pb2_grpc.add_KeyValueStoreServicer_to_server(kv, server)
+    server.add_insecure_port(addr)
     server.start()
-    
-    print(f"[{args.name}] Listening on 127.0.0.1:{args.port}")
+
+    print(f"[{args.name}] Listening on {addr}")
+    if cluster:
+        role = "Leaseholder" if kv.is_leaseholder else "Follower"
+        print(f"[{kv.name}] KeyValueStore enabled ({role})")
     server.wait_for_termination()
+
 
 if __name__ == "__main__":
     main()
